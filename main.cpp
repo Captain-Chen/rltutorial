@@ -130,6 +130,10 @@ void drawMap(){
 
 // function: check if a tile is passable
 bool isPassable(int nMapX, int nMapY){
+	// check if coordinates are valid; i.e. can't walk off the map
+	if(nMapX < 0 || nMapX >= map_sizeX || nMapY < 0 || nMapY >= map_sizeY)
+		return false;
+
 	// grab tile information from map
 	int tileValue = map[nMapY][nMapX];
 
