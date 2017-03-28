@@ -22,8 +22,7 @@ int map[MAP_HEIGHT][MAP_WIDTH] = {
 void initMap();
 void drawTile();
 bool isPassable(int mapX, int mapY);
-void interactDoor();
-
+void interactDoor(char action);
 
 // player variables
 int nPlayerX;
@@ -121,11 +120,11 @@ int main(void)
 				break;
 			// open door
 			case 'o':
-				interactDoor();
+				interactDoor('o');
 				break;
 			// close door
 			case 'c':
-				interactDoor();
+				interactDoor('c');
 				break;
 			case 'q':
 				return 0;
@@ -164,7 +163,7 @@ bool isPassable(int nMapX, int nMapY){
 	return sTileIndex[nTileValue].bPassable;
 }
 
-void interactDoor(){
+void interactDoor(char action){
 	mvprintw(MAP_HEIGHT + 1, 0, "What direction?");
 	int ch = getch();
 	int nDeltaX, nDeltaY;
@@ -216,11 +215,21 @@ void interactDoor(){
 			return;
 	}
 
-	if(map[nPlayerY + nDeltaY][nPlayerX + nDeltaX] == TILE_CLOSEDDOOR){
+	nTileValue = map[nPlayerY + nDeltaY][nPlayerX + nDeltaX];
+	if(action == 'o' && nTileValue == TILE_CLOSEDDOOR){
 		map[nPlayerY + nDeltaY][nPlayerX + nDeltaX] = TILE_OPENDOOR;
 	}
-	else if(map[nPlayerY + nDeltaY][nPlayerX + nDeltaX] == TILE_OPENDOOR)
+	else if(action == 'o' && nTileValue == TILE_OPENDOOR)
 	{
+		mvprintw(MAP_HEIGHT + 1, 0, "The door is already open!");
+	}
+	
+	if(action == 'c' && nTileValue == TILE_OPENDOOR){
 		map[nPlayerY + nDeltaY][nPlayerX + nDeltaX] = TILE_CLOSEDDOOR;
 	}
+	else if(action == 'c' && nTileValue == TILE_CLOSEDDOOR)
+	{
+		mvprintw(MAP_HEIGHT + 1, 0, "The door is already closed!");
+	}
+	getch();
 }
