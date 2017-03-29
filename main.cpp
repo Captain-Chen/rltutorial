@@ -28,6 +28,7 @@ void interactDoor(char action);
 int nPlayerX;
 int nPlayerY;
 
+// new defined user type
 struct TILE_TYPE{
 	char nCharacter; // ASCII character
 	short nColorCode; // Colour code
@@ -120,11 +121,11 @@ int main(void)
 				break;
 			// open door
 			case 'o':
-				interactDoor('o');
+				interactDoor(ch);
 				break;
 			// close door
 			case 'c':
-				interactDoor('c');
+				interactDoor(ch);
 				break;
 			case 'q':
 				return 0;
@@ -231,5 +232,4 @@ void interactDoor(char action){
 	{
 		mvprintw(MAP_HEIGHT + 1, 0, "The door is already closed!");
 	}
-	getch();
 }
