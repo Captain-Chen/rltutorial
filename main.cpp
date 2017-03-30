@@ -18,21 +18,31 @@ int map[MAP_HEIGHT][MAP_WIDTH] = {
 { 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
+// define items array; mapping 2D array into a 1D array (so iteration is easier)
+//int items[MAP_WIDTH * MAP_HEIGHT];
+int items[MAP_HEIGHT][MAP_WIDTH]; // keep it consistent for now
+
 // map functions
-void initMap();
+void initItems();
+void drawMap();
 void drawTile();
 bool isPassable(int mapX, int mapY);
 void interactDoor(char action);
 
 // player variables
-int nPlayerX;
-int nPlayerY;
+int nPlayerX, nPlayerY;
 
 // new defined user type
 struct TILE_TYPE{
 	char nCharacter; // ASCII character
 	short nColorCode; // Colour code
 	bool bPassable; // Can you walk on this tile?
+};
+
+struct ITEM_TYPE{
+	char nCharacter; // ASCII character code
+	short nColorCode; // Colour code
+	char *p_szName; // Name of the item
 };
 
 TILE_TYPE sTileIndex[] = {
@@ -42,10 +52,22 @@ TILE_TYPE sTileIndex[] = {
 	{'/', 6, true}	  // 3 TILE_OPENDOOR
 };
 
+ITEM_TYPE sItemIndex[] = {
+	{' ', 7, "EMPTY"},			// 0 ITEM_NONE
+	{(char)173, 6, "Potion"},	// 1 ITEM_POTION
+	{'*', 6, "Rock"}			// 2 ITEM_ROCK
+};
+
+// tile types
 const int TILE_ROCKFLOOR = 0;
 const int TILE_WALL = 1;
 const int TILE_CLOSEDDOOR = 2;
 const int TILE_OPENDOOR = 3;
+
+// item types
+const int ITEM_EMPTY = 0;
+const int ITEM_POTION = 1;
+const int ITEM_ROCK = 2;
 
 int main(void)
 {
@@ -55,27 +77,31 @@ int main(void)
 	int ch = getch();
 
 	// initialize player character and position
-	nPlayerX = 10; 
-	nPlayerY = 10;
+	nPlayerX = MAP_WIDTH / 2; 
+	nPlayerY = MAP_HEIGHT / 2; 
 	int nDeltaX, nDeltaY;
+	nDeltaX = nDeltaY = 0;
+
 	char player = '@';
 
 	// colour definition
 	start_color();
 	init_pair(6, COLOR_YELLOW, COLOR_BLACK);
 	init_pair(7, COLOR_WHITE, COLOR_BLACK);
+	initItems();
 
 	// main game loop
 	while(true){
 		// clear and add player character to screen; draw the map
 		// map is drawn first then the player character is drawn on top
 		clear();
-		drawTile();
+		drawMap();
+		// set colour and draw player to screen
 		attron(COLOR_PAIR(6));
-		mvaddch(nPlayerY, nPlayerX, player);
-		// reset nDeltaX and nDeltaY
-		nDeltaX = nDeltaY = 0;
+			mvaddch(nPlayerY, nPlayerX, player);
 		attroff(COLOR_PAIR(6));
+		// reset deltaY and deltaX position
+		nDeltaY = nDeltaX = 0;
 		// check for user input again
 		ch = getch();
 		switch(ch){
@@ -140,15 +166,27 @@ int main(void)
 	return 0;
 }
 
-void drawTile(){
-	for(int mapy = 0; mapy < MAP_HEIGHT; mapy++){
-		for(int mapx = 0; mapx < MAP_WIDTH; mapx++){
-			// get tile type
-			int nType = map[mapy][mapx];
+void initItems(){
+	for(int y = 0; y < MAP_HEIGHT; y++){
+		for(int x = 0; x < MAP_WIDTH; x++){
+			items[y][x] = ITEM_EMPTY;
+		}
+	}
+}
+void drawTile(int x, int y){
+	// get tile type
+	int nType = map[y][x];
 
-			attron(COLOR_PAIR(sTileIndex[nType].nColorCode));
-			mvaddch(mapy, mapx, sTileIndex[nType].nCharacter);
-			attroff(COLOR_PAIR(sTileIndex[nType].nColorCode));
+	// get color type then draw it to screen
+	attron(COLOR_PAIR(sTileIndex[nType].nColorCode));
+	mvaddch(y, x, sTileIndex[nType].nCharacter);
+	attroff(COLOR_PAIR(sTileIndex[nType].nColorCode));
+}
+
+void drawMap(){
+	for(int y = 0; y < MAP_HEIGHT; y++){
+		for(int x = 0; x < MAP_WIDTH; x++){
+			drawTile(x, y);
 		}
 	}
 }
