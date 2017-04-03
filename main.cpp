@@ -1,6 +1,8 @@
 #include <ncurses.h>
 #include "Screen.h"
 
+#include <string.h>
+
 // map variable
 const int MAP_HEIGHT = 11;
 const int MAP_WIDTH = 20;
@@ -20,7 +22,9 @@ int map[MAP_HEIGHT][MAP_WIDTH] = {
 
 // define items array; mapping 2D array into a 1D array (so iteration is easier)
 //int items[MAP_WIDTH * MAP_HEIGHT];
-int items[MAP_HEIGHT][MAP_WIDTH]; // keep it consistent for now
+int items[MAP_HEIGHT][MAP_WIDTH]; // keep it consistent for now as we are using 2D arrays
+
+int inventory[10];
 
 // map functions
 void initItems();
@@ -28,6 +32,10 @@ void drawMap();
 void drawTile();
 bool isPassable(int mapX, int mapY);
 void interactDoor(char action);
+void getCommand();
+void dropCommand();
+
+void showInventory();
 
 // player variables
 int nPlayerX, nPlayerY;
@@ -53,9 +61,9 @@ TILE_TYPE sTileIndex[] = {
 };
 
 ITEM_TYPE sItemIndex[] = {
-	{' ', 7, "EMPTY"},			// 0 ITEM_NONE
+	{' ', 7, "EMPTY"},			// 0 ITEM_EMPTY
 	{(char)173, 6, "Potion"},	// 1 ITEM_POTION
-	{'*', 6, "Rock"}			// 2 ITEM_ROCK
+	{'*', 7, "Rock"}			// 2 ITEM_ROCK
 };
 
 // tile types
@@ -68,6 +76,8 @@ const int TILE_OPENDOOR = 3;
 const int ITEM_EMPTY = 0;
 const int ITEM_POTION = 1;
 const int ITEM_ROCK = 2;
+
+const int INVENTORY_SLOTS = sizeof(inventory) / sizeof(inventory[0]);
 
 int main(void)
 {
@@ -86,9 +96,16 @@ int main(void)
 
 	// colour definition
 	start_color();
+	init_pair(1, COLOR_RED, COLOR_BLACK);
 	init_pair(6, COLOR_YELLOW, COLOR_BLACK);
 	init_pair(7, COLOR_WHITE, COLOR_BLACK);
 	initItems();
+	// initialize inventory
+	memset(inventory, ITEM_EMPTY, sizeof(inventory));
+	
+	// add stuff to item map
+	items[5][9] = ITEM_ROCK;
+	items[4][6] = ITEM_POTION;
 
 	// main game loop
 	while(true){
@@ -96,10 +113,11 @@ int main(void)
 		// map is drawn first then the player character is drawn on top
 		clear();
 		drawMap();
+		showInventory();
 		// set colour and draw player to screen
-		attron(COLOR_PAIR(6));
+		attron(COLOR_PAIR(1));
 			mvaddch(nPlayerY, nPlayerX, player);
-		attroff(COLOR_PAIR(6));
+		attroff(COLOR_PAIR(1));
 		// reset deltaY and deltaX position
 		nDeltaY = nDeltaX = 0;
 		// check for user input again
@@ -155,6 +173,12 @@ int main(void)
 				break;
 			case 'q':
 				return 0;
+			case ',':
+				getCommand();
+				break;
+			case 'D':
+				dropCommand();
+				break;
 			default:
 				break;
 		}
@@ -173,14 +197,43 @@ void initItems(){
 		}
 	}
 }
-void drawTile(int x, int y){
-	// get tile type
-	int nType = map[y][x];
 
+void showInventory(){
+	mvaddstr(1, MAP_WIDTH + 2, "INVENTORY");		
+	mvaddstr(2, MAP_WIDTH + 2, "---------");
+
+	for(int i = 0; i < INVENTORY_SLOTS; i++){
+		// get itemtype
+		int nType = inventory[i];
+
+		// draw to screen
+		mvprintw(3+i, MAP_WIDTH + 2, sItemIndex[nType].p_szName);
+	}
+}
+
+void drawTile(int x, int y){
+	int nColor;
+	int nType;
+	char nCharacter;
+
+	if(items[y][x] != ITEM_EMPTY)
+	{
+		// get tile value
+		nType = items[y][x];
+		nColor = sItemIndex[nType].nColorCode;
+		nCharacter = sItemIndex[nType].nCharacter;
+	}
+	else
+	{
+		// get tile value
+		nType = map[y][x];
+		nColor = sTileIndex[nType].nColorCode;
+		nCharacter = sTileIndex[nType].nCharacter;
+	}
 	// get color type then draw it to screen
-	attron(COLOR_PAIR(sTileIndex[nType].nColorCode));
-	mvaddch(y, x, sTileIndex[nType].nCharacter);
-	attroff(COLOR_PAIR(sTileIndex[nType].nColorCode));
+	attron(COLOR_PAIR(nColor));
+	mvaddch(y, x, nCharacter);
+	attroff(COLOR_PAIR(nColor));
 }
 
 void drawMap(){
@@ -260,7 +313,8 @@ void interactDoor(char action){
 	}
 	else if(action == 'o' && nTileValue == TILE_OPENDOOR)
 	{
-		mvprintw(MAP_HEIGHT + 1, 0, "The door is already open!");
+		mvprintw(MAP_HEIGHT + 3, 0, "The door is already open!");
+		getch();
 	}
 	
 	if(action == 'c' && nTileValue == TILE_OPENDOOR){
@@ -268,6 +322,60 @@ void interactDoor(char action){
 	}
 	else if(action == 'c' && nTileValue == TILE_CLOSEDDOOR)
 	{
-		mvprintw(MAP_HEIGHT + 1, 0, "The door is already closed!");
+		mvprintw(MAP_HEIGHT + 3, 0, "The door is already closed!");
+		getch();
 	}
 }
+
+void getCommand(){ 
+	// check if there is an item at the player's current position
+	if(items[nPlayerY][nPlayerX] == ITEM_EMPTY){ 
+		return;
+	}
+
+	for(int i = 0; i < INVENTORY_SLOTS; i++){
+		if(inventory[i] == ITEM_EMPTY){
+			// copy value into inventory
+			inventory[i] = items[nPlayerY][nPlayerX];
+			// replace value of item to empty
+			items[nPlayerY][nPlayerX] = ITEM_EMPTY;
+			return;
+		}
+	}
+	
+	// no item slots available
+	return;
+}
+
+void dropCommand(){
+	mvprintw(MAP_HEIGHT + 1, 0, "Drop from which slot?");
+	int ch = getch();
+	
+	// convert letters to numbers using off-set
+	int nSlot = (char)ch - 'A'; 
+
+	// check if this is a valid slot
+	if(nSlot < 0 || nSlot >= INVENTORY_SLOTS){
+		mvprintw(MAP_HEIGHT + 3, 0, "Invalid inventory slot");	
+		getch();
+	}
+	// check if there is actually an item
+	else if(inventory[nSlot] == ITEM_EMPTY)
+	{
+		mvprintw(MAP_HEIGHT + 3, 0, "Nothing in this item slot");
+		getch();
+	}
+	// check if the player if there is room to drop this item
+	else if(items[nPlayerY][nPlayerX] != ITEM_EMPTY)
+	{
+		mvprintw(MAP_HEIGHT + 3, 0, "There's no room to drop this item");
+		getch();
+	}
+	else
+	{
+		// drop item onto ground
+		items[nPlayerY][nPlayerX] = inventory[nSlot];
+		inventory[nSlot] = ITEM_EMPTY;
+	}
+}
+
