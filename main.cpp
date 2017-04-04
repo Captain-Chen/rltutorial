@@ -4,7 +4,7 @@
 #include <string.h>
 
 // map variable
-const int MAP_HEIGHT = 11;
+const int MAP_HEIGHT = 13;
 const int MAP_WIDTH = 20;
 int map[MAP_HEIGHT][MAP_WIDTH] = {
 { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
@@ -15,9 +15,11 @@ int map[MAP_HEIGHT][MAP_WIDTH] = {
 { 0, 0, 0, 0, 0, 1, 3, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0 },
 { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0 },
 { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 1, 0, 0, 0, 0 },
-{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-{ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-{ 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+{ 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+{ 1, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0 },
+{ 1, 1, 0, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+{ 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
 // define items array; mapping 2D array into a 1D array (so iteration is easier)
@@ -34,7 +36,7 @@ bool isPassable(int mapX, int mapY);
 void interactDoor(char action);
 void getCommand();
 void dropCommand();
-
+void useCommand();
 void showInventory();
 
 // player variables
@@ -42,27 +44,29 @@ int nPlayerX, nPlayerY;
 
 // new defined user type
 struct TILE_TYPE{
-	char nCharacter; // ASCII character
-	short nColorCode; // Colour code
-	bool bPassable; // Can you walk on this tile?
+	char nCharacter;	// ASCII character
+	short nColorCode;	// Colour code
+	bool isBold;		// Bolded font?
+	bool bPassable;		// Can you walk on this tile?
 };
 
 struct ITEM_TYPE{
-	char nCharacter; // ASCII character code
-	short nColorCode; // Colour code
-	char *p_szName; // Name of the item
+	char nCharacter;	// ASCII character code
+	short nColorCode;	// Colour code
+	char *p_szName;		// Name of the item
 };
 
 TILE_TYPE sTileIndex[] = {
-	{'.', 7, true},   // 0 TILE_ROCKFLOOR
-	{'#', 7, false},  // 1 TILE_WALL
-	{'+', 6, false},  // 2 TILE_CLOSEDDOOR
-	{'/', 6, true}	  // 3 TILE_OPENDOOR
+	{'.', 7, false, true},    // 0 TILE_ROCKFLOOR
+	{'#', 7, true, false},	  // 1 TILE_WALL
+	{'+', 3, true, false},	  // 2 TILE_CLOSEDDOOR
+	{'/', 3, false, true},	  // 3 TILE_OPENDOOR
+	{'~', 4, true, false}	  // 4 TILE_WATER 
 };
 
 ITEM_TYPE sItemIndex[] = {
 	{' ', 7, "EMPTY"},			// 0 ITEM_EMPTY
-	{(char)173, 6, "Potion"},	// 1 ITEM_POTION
+	{'!', 6, "Potion"},			// 1 ITEM_POTION
 	{'*', 7, "Rock"}			// 2 ITEM_ROCK
 };
 
@@ -71,6 +75,7 @@ const int TILE_ROCKFLOOR = 0;
 const int TILE_WALL = 1;
 const int TILE_CLOSEDDOOR = 2;
 const int TILE_OPENDOOR = 3;
+const int TILE_WATER = 4;
 
 // item types
 const int ITEM_EMPTY = 0;
@@ -97,8 +102,13 @@ int main(void)
 	// colour definition
 	start_color();
 	init_pair(1, COLOR_RED, COLOR_BLACK);
-	init_pair(6, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(2, COLOR_GREEN, COLOR_BLACK);
+	init_pair(3, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(4, COLOR_BLUE, COLOR_BLACK);
+	init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+	init_pair(6, COLOR_CYAN, COLOR_BLACK);
 	init_pair(7, COLOR_WHITE, COLOR_BLACK);
+	
 	initItems();
 	// initialize inventory
 	memset(inventory, ITEM_EMPTY, sizeof(inventory));
@@ -115,9 +125,9 @@ int main(void)
 		drawMap();
 		showInventory();
 		// set colour and draw player to screen
-		attron(COLOR_PAIR(1));
+		attron(COLOR_PAIR(3));
 			mvaddch(nPlayerY, nPlayerX, player);
-		attroff(COLOR_PAIR(1));
+		attroff(COLOR_PAIR(3));
 		// reset deltaY and deltaX position
 		nDeltaY = nDeltaX = 0;
 		// check for user input again
@@ -179,6 +189,9 @@ int main(void)
 			case 'D':
 				dropCommand();
 				break;
+			case 'U':
+				useCommand();
+				break;
 			default:
 				break;
 		}
@@ -206,8 +219,12 @@ void showInventory(){
 		// get itemtype
 		int nType = inventory[i];
 
-		// draw to screen
-		mvprintw(3+i, MAP_WIDTH + 2, sItemIndex[nType].p_szName);
+		// write corresponding letter to each item slot
+		mvaddch(3+i, MAP_WIDTH + 2, 'A'+i);
+		// formatting
+		mvaddch(3+i, MAP_WIDTH + 3, ':');
+		// write out the name of the item in each slot
+		mvprintw(3+i, MAP_WIDTH + 5, sItemIndex[nType].p_szName);
 	}
 }
 
@@ -215,7 +232,7 @@ void drawTile(int x, int y){
 	int nColor;
 	int nType;
 	char nCharacter;
-
+	bool isBold = false;
 	if(items[y][x] != ITEM_EMPTY)
 	{
 		// get tile value
@@ -229,9 +246,12 @@ void drawTile(int x, int y){
 		nType = map[y][x];
 		nColor = sTileIndex[nType].nColorCode;
 		nCharacter = sTileIndex[nType].nCharacter;
+		isBold = sTileIndex[nType].isBold;
 	}
 	// get color type then draw it to screen
 	attron(COLOR_PAIR(nColor));
+	// check if the character needs to be bolded
+	if(isBold){attron(A_BOLD);}else{attroff(A_BOLD);}
 	mvaddch(y, x, nCharacter);
 	attroff(COLOR_PAIR(nColor));
 }
@@ -351,7 +371,7 @@ void dropCommand(){
 	mvprintw(MAP_HEIGHT + 1, 0, "Drop from which slot?");
 	int ch = getch();
 	
-	// convert letters to numbers using off-set
+	// convert letter to numbers using off-set
 	int nSlot = (char)ch - 'A'; 
 
 	// check if this is a valid slot
@@ -376,6 +396,38 @@ void dropCommand(){
 		// drop item onto ground
 		items[nPlayerY][nPlayerX] = inventory[nSlot];
 		inventory[nSlot] = ITEM_EMPTY;
+	}
+}
+
+void useCommand(){
+	mvprintw(MAP_HEIGHT + 1, 0, "Use which item?");
+	int ch = getch();
+	
+	// convert letter to number using off-set
+	int nSlot = (char)ch - 'A';
+
+	// check if this is a valid slot
+	if(nSlot < 0 || nSlot >= INVENTORY_SLOTS){
+		mvprintw(MAP_HEIGHT + 3, 0, "Invalid inventory slot");
+		getch();
+	}
+
+	// get the item value from the inventory
+	switch(inventory[nSlot])
+	{
+		case ITEM_EMPTY:
+			mvprintw(MAP_HEIGHT + 3, 0, "Nothing in this item slot to use");
+			getch();
+			break;
+		case ITEM_POTION:
+			mvprintw(MAP_HEIGHT + 3, 0, "You quaff the potion");
+			inventory[nSlot] = ITEM_EMPTY;
+			getch();
+			break;
+		default:
+			mvprintw(MAP_HEIGHT + 3, 0, "Not sure how to use this item");
+			getch();
+			break;
 	}
 }
 
